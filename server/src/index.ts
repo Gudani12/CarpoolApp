@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/requireAuth";
+import appConfigRouter from "./routes/appConfig";
 import checkIdRouter from "./routes/checkId";
 import driverVehicleRouter from "./routes/driverVehicle";
 import healthRouter from "./routes/health";
@@ -266,6 +267,7 @@ app.use(
 app.use(express.json({ limit: "32kb" }));
 
 app.use("/api/health", healthRouter);
+app.use("/api/app-config", appConfigRouter);
 app.use("/api/check-id", requireAuth, checkIdRouter);
 app.use("/api/drivers", requireAuth, driverVehicleRouter);
 app.use("/api/messages", requireAuth, messagesRouter);

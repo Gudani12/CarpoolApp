@@ -1,7 +1,11 @@
 import { useAuth } from "@clerk/expo";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
+import { API_ORIGIN } from "@/constants/api";
+
+const configuredApiUrl = (
+  process.env.EXPO_PUBLIC_API_URL?.trim() || API_ORIGIN
+).replace(/\/+$/, "");
 
 function buildApiUrl(baseUrl: string, path: string): string {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
@@ -19,12 +23,6 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   token?: string | null,
 ): Promise<T> {
-  if (!configuredApiUrl) {
-    throw new Error(
-      "Missing EXPO_PUBLIC_API_URL. Configure the backend URL and restart Expo.",
-    );
-  }
-
   if (
     configuredApiUrl.startsWith("http://") &&
     !__DEV__

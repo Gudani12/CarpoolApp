@@ -15,11 +15,22 @@ describe('apiRequest wrapper', () => {
     jest.clearAllMocks();
   });
 
-  it('UT-API-01: throws when the API URL is missing', async () => {
+  it('UT-API-01: defaults to the Render API when no URL is configured', async () => {
     delete process.env.EXPO_PUBLIC_API_URL;
     jest.resetModules();
+
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    }) as any;
+
     const { apiRequest } = require('../../lib/api');
-    await expect(apiRequest('user')).rejects.toThrow(/Missing EXPO_PUBLIC_API_URL/);
+    await apiRequest('user');
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://lyft-api-eofz.onrender.com/user',
+      expect.objectContaining({}),
+    );
   });
 
   it('UT-API-02: sends a GET request to the correct URL', async () => {

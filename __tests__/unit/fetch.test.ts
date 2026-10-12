@@ -8,10 +8,20 @@ describe('fetchAPI transport', () => {
     jest.resetModules();
   });
 
-  it('UT-FETCH-01: throws when EXPO_PUBLIC_API_URL is missing for relative paths', async () => {
+  it('UT-FETCH-01: defaults to the Render API when no URL is configured', async () => {
     delete process.env.EXPO_PUBLIC_API_URL;
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    }) as any;
+
     const { fetchAPI } = require('../../lib/fetch');
-    await expect(fetchAPI('user')).rejects.toThrow(/Missing EXPO_PUBLIC_API_URL/);
+    await fetchAPI('user');
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://lyft-api-eofz.onrender.com/user',
+      undefined,
+    );
   });
 
   it('UT-FETCH-02: builds the URL from the configured base', async () => {
