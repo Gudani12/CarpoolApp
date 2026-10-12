@@ -2,6 +2,7 @@ import { Image, Text, View } from "react-native";
 
 import { icons } from "@/constants";
 import { formatDate, formatTime } from "@/lib/utils";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { Ride } from "@/types/type";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ const RideCard = ({ ride }: { ride: Ride }) => {
         >
           <Image
             source={{
-              uri: `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=600&height=400&center=lonlat:${ride.destination_longitude},${ride.destination_latitude}&zoom=14&apiKey=${process.env.EXPO_PUBLIC_GEOAPIFY_API_KEY}`,
+              uri: `https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=600&height=400&center=lonlat:${ride.destination_longitude},${ride.destination_latitude}&zoom=14&apiKey=${getRuntimeAppConfig()?.geoapifyApiKey}`,
             }}
             style={{
               width: 80,

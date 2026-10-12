@@ -207,22 +207,21 @@ Keep the Supabase service-role key server-only.
 
 ## 4. Configure Environment Variables
 
-Copy `.env.example` to `.env.local`.
+The app uses only `https://lyft-api-eofz.onrender.com` for its backend API. It does not require a local `.env` file or an Expo API URL override. Client configuration is loaded from the Render `/api/app-config` endpoint; provider keys are configured on Render, not in the Expo app build environment.
 
-Example:
+Configure these values on Render:
 
-```env
-EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_restricted_google_maps_key
-EXPO_PUBLIC_DIRECTIONS_API_KEY=your_restricted_google_maps_key
-EXPO_PUBLIC_GEOAPIFY_API_KEY=your_restricted_geoapify_key
-EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key
+```text
+CLERK_PUBLISHABLE_KEY
+SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+EXPO_PUBLIC_DIRECTIONS_API_KEY
+EXPO_PUBLIC_GEOAPIFY_API_KEY
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ```
 
-The app uses `https://lyft-api-eofz.onrender.com` for its API by default. Set `EXPO_PUBLIC_API_URL` only when using a different backend. Clerk's public publishable key is loaded from the Render `/api/app-config` endpoint; configure `CLERK_PUBLISHABLE_KEY` on Render. Do not put Clerk secret keys in Expo variables.
-
-Set the remaining Expo public variables in the EAS preview and production environments.
+The public config endpoint only returns publishable/public client keys. The app loads config from Render at startup. The Android native Maps key is applied by the config plugin during prebuild; rebuild the native app after changing it. Never expose `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `CLERK_SECRET_KEY`, `DRIVER_CLERK_SECRET_KEY`, `GEMINI_API_KEY`, or `CHECK_ID_API_KEY`.
 
 Backend secrets must be configured separately on the backend hosting platform.
 

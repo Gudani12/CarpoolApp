@@ -2,11 +2,8 @@ import { Image, View } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
 import { icons } from "@/constants";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { GoogleInputProps } from "@/types/type";
-
-const googlePlacesApiKey =
-  process.env.EXPO_PUBLIC_PLACES_API_KEY ??
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 const GoogleTextInput = ({
   icon,
@@ -15,6 +12,8 @@ const GoogleTextInput = ({
   textInputBackgroundColor,
   handlePress,
 }: GoogleInputProps) => {
+  const googlePlacesApiKey = getRuntimeAppConfig()?.googleMapsApiKey;
+
   return (
     <View
       className={`flex flex-row items-center justify-center relative z-50 rounded-xl ${containerStyle}`}

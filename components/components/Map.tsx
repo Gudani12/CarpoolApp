@@ -13,13 +13,13 @@ import {
   calculateRegion,
   generateMarkersFromData,
 } from "@/lib/map";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { useDriverStore, useLocationStore } from "@/store";
 import { Driver, MarkerData } from "@/types/type";
 
 
-const GOOGLE_API_KEY = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY!;
-
 const Map = () => {
+  const googleApiKey = getRuntimeAppConfig()?.directionsApiKey;
   const {
     userLatitude,
     userLongitude,
@@ -130,7 +130,7 @@ const Map = () => {
         />
       ))}
 
-      {destinationLatitude && destinationLongitude && (
+      {destinationLatitude && destinationLongitude && googleApiKey && (
         <>
           <Marker
             coordinate={{
@@ -150,7 +150,7 @@ const Map = () => {
               latitude: destinationLatitude,
               longitude: destinationLongitude,
             }}
-            apikey={GOOGLE_API_KEY}
+            apikey={googleApiKey}
             strokeWidth={5}
             strokeColor="#0286FF"
           />

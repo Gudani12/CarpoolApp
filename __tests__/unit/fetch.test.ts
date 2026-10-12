@@ -8,7 +8,23 @@ describe('fetchAPI transport', () => {
     jest.resetModules();
   });
 
-  it('UT-FETCH-01: defaults to the Render API when no URL is configured', async () => {
+  it('UT-FETCH-01: always uses the Render API', async () => {
+    process.env.EXPO_PUBLIC_API_URL = 'https://not-render.example.com';
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ok: true }),
+    }) as any;
+
+    const { fetchAPI } = require('../../lib/fetch');
+    await fetchAPI('user');
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'https://lyft-api-eofz.onrender.com/user',
+      undefined,
+    );
+  });
+
+  it('UT-FETCH-02: builds relative URLs from Render', async () => {
     delete process.env.EXPO_PUBLIC_API_URL;
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -24,24 +40,8 @@ describe('fetchAPI transport', () => {
     );
   });
 
-  it('UT-FETCH-02: builds the URL from the configured base', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
-    globalThis.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true }),
-    }) as any;
-
-    const { fetchAPI } = require('../../lib/fetch');
-    await fetchAPI('user');
-
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/user',
-      undefined,
-    );
-  });
-
-  it('UT-FETCH-03: strips trailing slashes from the base URL', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com///';
+  it('UT-FETCH-03: normalizes relative paths', async () => {
+    process.env.EXPO_PUBLIC_API_URL = 'https://not-render.example.com///';
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({}),
@@ -51,24 +51,23 @@ describe('fetchAPI transport', () => {
     await fetchAPI('user');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/user',
+      'https://lyft-api-eofz.onrender.com/user',
       undefined,
     );
   });
 
-  it('UT-FETCH-04: rejects insecure HTTP requests', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'http://api.example.com';
+  it('UT-FETCH-04: rejects insecure absolute HTTP requests', async () => {
+    delete process.env.EXPO_PUBLIC_API_URL;
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({}),
     }) as any;
 
     const { fetchAPI } = require('../../lib/fetch');
-    await expect(fetchAPI('user')).rejects.toThrow(/Insecure HTTP/);
+    await expect(fetchAPI('http://api.example.com/user')).rejects.toThrow(/Insecure HTTP/);
   });
 
   it('UT-FETCH-05: throws on non-OK HTTP responses', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -80,7 +79,6 @@ describe('fetchAPI transport', () => {
   });
 
   it('UT-FETCH-06: passes absolute URLs through unchanged', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
     globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ ok: true }),

@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Payment from "@/components/Payment";
 import { brand, ui } from "@/constants/theme";
 import { formatTime } from "@/lib/utils";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { useDriverVehicle } from "@/lib/useDriverVehicle";
 import { useDriverStore, useLocationStore } from "@/store";
 
@@ -35,6 +36,8 @@ const PALETTE = {
 };
 
 const BookRide = () => {
+  const stripePublishableKey =
+    getRuntimeAppConfig()?.stripePublishableKey ?? "";
   const { user } = useUser();
   const { vehicle, loading: vehicleLoading } = useDriverVehicle(
     useDriverStore((state) => state.selectedDriver),
@@ -148,7 +151,7 @@ const BookRide = () => {
 
   return (
     <StripeProvider
-      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
+      publishableKey={stripePublishableKey}
       merchantIdentifier="merchant.com.lyft"
       urlScheme="myapp"
     >

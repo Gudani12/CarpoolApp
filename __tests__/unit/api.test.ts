@@ -15,8 +15,8 @@ describe('apiRequest wrapper', () => {
     jest.clearAllMocks();
   });
 
-  it('UT-API-01: defaults to the Render API when no URL is configured', async () => {
-    delete process.env.EXPO_PUBLIC_API_URL;
+  it('UT-API-01: always uses the Render API', async () => {
+    process.env.EXPO_PUBLIC_API_URL = 'https://not-render.example.com';
     jest.resetModules();
 
     globalThis.fetch = jest.fn().mockResolvedValue({
@@ -33,8 +33,8 @@ describe('apiRequest wrapper', () => {
     );
   });
 
-  it('UT-API-02: sends a GET request to the correct URL', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
+  it('UT-API-02: sends a GET request to the Render API', async () => {
+    delete process.env.EXPO_PUBLIC_API_URL;
     jest.resetModules();
 
     globalThis.fetch = jest.fn().mockResolvedValue({
@@ -46,14 +46,13 @@ describe('apiRequest wrapper', () => {
     const result = await apiRequest('user');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/user',
+      'https://lyft-api-eofz.onrender.com/user',
       expect.objectContaining({}),
     );
     expect(result).toEqual({ data: { id: 1 } });
   });
 
-  it('uses a single api prefix when the base URL already ends in /api', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com/api/';
+  it('uses a single api prefix when the request path already starts in /api', async () => {
     jest.resetModules();
 
     globalThis.fetch = jest.fn().mockResolvedValue({
@@ -65,13 +64,12 @@ describe('apiRequest wrapper', () => {
     await apiRequest('/api/profile');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.example.com/api/profile',
+      'https://lyft-api-eofz.onrender.com/api/profile',
       expect.objectContaining({}),
     );
   });
 
   it('UT-API-03: sets Content-Type when body is present', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
     jest.resetModules();
 
     globalThis.fetch = jest.fn().mockResolvedValue({
@@ -91,7 +89,6 @@ describe('apiRequest wrapper', () => {
   });
 
   it('UT-API-04: sets Authorization header when token is provided', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
     jest.resetModules();
 
     globalThis.fetch = jest.fn().mockResolvedValue({
@@ -108,7 +105,6 @@ describe('apiRequest wrapper', () => {
   });
 
   it('UT-API-05: throws with server-provided error message on non-OK responses', async () => {
-    process.env.EXPO_PUBLIC_API_URL = 'https://api.example.com';
     jest.resetModules();
 
     globalThis.fetch = jest.fn().mockResolvedValue({

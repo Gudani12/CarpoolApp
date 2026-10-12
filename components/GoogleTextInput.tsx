@@ -2,9 +2,8 @@ import { useRef, useState } from "react";
 import { Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { icons } from "@/constants";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { GoogleInputProps } from "@/types/type";
-
-const geoapifyKey = process.env.EXPO_PUBLIC_GEOAPIFY_API_KEY;
 
 const GoogleTextInput = ({
   icon,
@@ -14,6 +13,7 @@ const GoogleTextInput = ({
   handlePress,
   onClear,
 }: GoogleInputProps) => {
+  const geoapifyKey = getRuntimeAppConfig()?.geoapifyApiKey;
   const [text, setText] = useState("");
   const [places, setPlaces] = useState<any[]>([]);
   const [focused, setFocused] = useState(false);
@@ -24,7 +24,7 @@ const GoogleTextInput = ({
     setText(value);
     setPlaces([]);
 
-    if (value.length < 3) {
+    if (value.length < 3 || !geoapifyKey) {
       return;
     }
 

@@ -10,6 +10,8 @@ import "../global.css";
 import AnimatedSplash from "@/components/AnimatedSplash";
 import { API_ORIGIN } from "@/constants/api";
 import { tokenCache } from "@/lib/auth";
+import { setRuntimeAppConfig } from "@/lib/runtimeConfig";
+import { configureSupabaseClient } from "@/lib/supabase";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 // The catch matters: in Expo Go and after a Fast Refresh there may be no native
@@ -52,11 +54,32 @@ export default function RootLayout() {
         }
         if (
           typeof body?.clerkPublishableKey !== "string" ||
-          !/^pk_(test|live)_[A-Za-z0-9]+\$?$/.test(body.clerkPublishableKey)
+          !/^pk_(test|live)_[A-Za-z0-9]+\$?$/.test(body.clerkPublishableKey) ||
+          typeof body?.supabaseUrl !== "string" ||
+          typeof body?.supabasePublishableKey !== "string" ||
+          typeof body?.googleMapsApiKey !== "string" ||
+          typeof body?.directionsApiKey !== "string" ||
+          typeof body?.geoapifyApiKey !== "string" ||
+          typeof body?.stripePublishableKey !== "string"
         ) {
-          throw new Error("Render returned an invalid Clerk publishable key");
+          throw new Error("Render returned invalid app configuration");
         }
-        if (isMounted) setPublishableKey(body.clerkPublishableKey);
+        if (isMounted) {
+          setRuntimeAppConfig({
+            clerkPublishableKey: body.clerkPublishableKey,
+            supabaseUrl: body.supabaseUrl,
+            supabasePublishableKey: body.supabasePublishableKey,
+            googleMapsApiKey: body.googleMapsApiKey,
+            directionsApiKey: body.directionsApiKey,
+            geoapifyApiKey: body.geoapifyApiKey,
+            stripePublishableKey: body.stripePublishableKey,
+          });
+          configureSupabaseClient(
+            body.supabaseUrl,
+            body.supabasePublishableKey,
+          );
+          setPublishableKey(body.clerkPublishableKey);
+        }
       } catch (error) {
         if (isMounted) {
           setConfigError(

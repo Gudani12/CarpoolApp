@@ -1,6 +1,5 @@
 import { Driver, MarkerData } from "@/types/type";
-
-const directionsAPI = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY;
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 
 export const generateMarkersFromData = ({
   data,
@@ -94,6 +93,9 @@ export const calculateDriverTimes = async ({
     return;
 
   try {
+    const directionsAPI = getRuntimeAppConfig()?.directionsApiKey;
+    if (!directionsAPI) return;
+
     const timesPromises = markers.map(async (marker) => {
       const responseToUser = await fetch(
         `https://maps.googleapis.com/maps/api/directions/json?origin=${marker.latitude},${marker.longitude}&destination=${userLatitude},${userLongitude}&key=${directionsAPI}`,

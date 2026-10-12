@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Payment from "@/components/Payment";
 import { brand, ui } from "@/constants/theme";
 import { formatDate } from "@/lib/utils";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { useDriverVehicle } from "@/lib/useDriverVehicle";
 import { OfferTrip } from "@/types/type";
 
@@ -36,6 +37,8 @@ const parseTrip = (value?: string | string[]): OfferTrip | null => {
 };
 
 const OfferTripBooking = () => {
+  const stripePublishableKey =
+    getRuntimeAppConfig()?.stripePublishableKey ?? "";
   const { user } = useUser();
   const { trip: tripParam } = useLocalSearchParams<{ trip?: string }>();
   const trip = parseTrip(tripParam);
@@ -68,7 +71,7 @@ const OfferTripBooking = () => {
 
   return (
     <StripeProvider
-      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
+      publishableKey={stripePublishableKey}
       merchantIdentifier="merchant.com.lyft"
       urlScheme="myapp"
     >

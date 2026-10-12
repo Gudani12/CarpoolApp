@@ -8,10 +8,7 @@
     "scheme": "lyft",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-      }
+      "supportsTablet": true
     },
     "android": {
       "package": "com.devsphere.lyft",
@@ -21,12 +18,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "config": {
-        "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-        }
-      }
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",

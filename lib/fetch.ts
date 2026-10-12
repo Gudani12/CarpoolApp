@@ -4,9 +4,7 @@ import { API_ORIGIN } from "@/constants/api";
 
 export const fetchAPI = async (url: string, options?: RequestInit) => {
   try {
-    const apiBaseUrl = (
-      process.env.EXPO_PUBLIC_API_URL?.trim() || API_ORIGIN
-    ).replace(/\/+$/, "");
+    const apiBaseUrl = API_ORIGIN;
     const requestUrl = /^https?:\/\//i.test(url)
       ? url
       : `${apiBaseUrl}/${url

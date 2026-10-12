@@ -15,12 +15,11 @@ import {
     fetchRoutePolyline,
     generateMarkersFromData,
 } from "@/lib/map";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { getSupabaseClient } from "@/lib/supabase";
 import { isDriverVisible } from "@/lib/utils";
 import { useDriverStore, useLocationStore } from "@/store";
 import { Driver, Hub, MarkerData } from "@/types/type";
-
-const GEOAPIFY_API_KEY = process.env.EXPO_PUBLIC_GEOAPIFY_API_KEY!;
 
 // ─── Palette (deep violet / black / white) ──────────────────────────────────
 const THEME = {
@@ -62,6 +61,7 @@ const SOFT_GREY_MAP_STYLE = [
 ];
 
 export default function Map() {
+  const geoapifyApiKey = getRuntimeAppConfig()?.geoapifyApiKey;
   const {
     userLatitude,
     userLongitude,
@@ -231,12 +231,13 @@ export default function Map() {
       setRouteCoordinates(fallback);
 
       // 2. Try to fetch a real road route from Geoapify
+      if (!geoapifyApiKey) return;
       fetchRoutePolyline({
         originLatitude: userLatitude,
         originLongitude: userLongitude,
         destinationLatitude,
         destinationLongitude,
-        apiKey: GEOAPIFY_API_KEY,
+        apiKey: geoapifyApiKey,
       }).then((coords) => {
         if (coords && coords.length > 0) {
           setRouteCoordinates(coords);
@@ -245,7 +246,13 @@ export default function Map() {
     } else {
       setRouteCoordinates(null);
     }
-  }, [userLatitude, userLongitude, destinationLatitude, destinationLongitude]);
+  }, [
+    userLatitude,
+    userLongitude,
+    destinationLatitude,
+    destinationLongitude,
+    geoapifyApiKey,
+  ]);
 
   // Fetch route from selected driver to user (violet line)
   useEffect(() => {
@@ -275,12 +282,13 @@ export default function Map() {
         setDriverRouteCoordinates(fallback);
 
         // 2. Try to fetch a real road route from Geoapify
+        if (!geoapifyApiKey) return;
         fetchRoutePolyline({
           originLatitude: driverMarker.latitude,
           originLongitude: driverMarker.longitude,
           destinationLatitude: userLatitude,
           destinationLongitude: userLongitude,
-          apiKey: GEOAPIFY_API_KEY,
+          apiKey: geoapifyApiKey,
         }).then((coords) => {
           if (coords && coords.length > 0) {
             setDriverRouteCoordinates(coords);
@@ -292,7 +300,7 @@ export default function Map() {
     } else {
       setDriverRouteCoordinates(null);
     }
-  }, [selectedDriver, userLatitude, userLongitude, markers]);
+  }, [selectedDriver, userLatitude, userLongitude, markers, geoapifyApiKey]);
 
   const region = calculateRegion({
     userLatitude,

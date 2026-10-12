@@ -3,9 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_ORIGIN } from "@/constants/api";
 
-const configuredApiUrl = (
-  process.env.EXPO_PUBLIC_API_URL?.trim() || API_ORIGIN
-).replace(/\/+$/, "");
+const configuredApiUrl = API_ORIGIN;
 
 function buildApiUrl(baseUrl: string, path: string): string {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
