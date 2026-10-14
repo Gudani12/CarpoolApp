@@ -1,4 +1,4 @@
-import { useOAuth } from "@clerk/expo";
+import { useAuth, useOAuth } from "@clerk/expo";
 import { router } from "expo-router";
 import { Alert, Image, Text, View } from "react-native";
 
@@ -8,9 +8,10 @@ import { googleOAuth } from "@/lib/auth";
 
 const OAuth = () => {
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { getToken } = useAuth();
 
   const handleGoogleSignIn = async () => {
-    const result = await googleOAuth(startOAuthFlow);
+    const result = await googleOAuth(startOAuthFlow, getToken);
 
     if (result.code === "session_exists") {
       Alert.alert("Success", "Session exists. Redirecting to home screen.");

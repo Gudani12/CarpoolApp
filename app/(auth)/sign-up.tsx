@@ -1,4 +1,5 @@
-import { useSignUp } from "@clerk/expo";
+import { useAuth } from "@clerk/expo";
+import { useSignUp } from "@clerk/expo/legacy";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -110,6 +111,7 @@ function Field({ label, icon, error, secure, hint, ...props }: FieldProps) {
 
 const SignUp = () => {
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { getToken } = useAuth();
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -279,17 +281,24 @@ const SignUp = () => {
       });
 
       if (completeSignUp.status === "complete") {
-        await fetchAPI("/(api)/user", {
+        await setActive({
+          session: completeSignUp.createdSessionId,
+        });
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Unable to establish a session for account setup.");
+        }
+
+        await fetchAPI("/api/user", {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             name: form.name,
             email: form.email.trim().toLowerCase(),
-            clerkId: completeSignUp.createdUserId,
           }),
-        });
-
-        await setActive({
-          session: completeSignUp.createdSessionId,
         });
 
         setVerification({

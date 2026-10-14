@@ -1,4 +1,4 @@
-import { useOAuth } from "@clerk/expo";
+import { useAuth, useOAuth } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -31,6 +31,7 @@ const OAuth = ({
 }: OAuthProps) => {
   const { startOAuthFlow: startGoogle } = useOAuth({ strategy: "oauth_google" });
   const { startOAuthFlow: startApple } = useOAuth({ strategy: "oauth_apple" });
+  const { getToken } = useAuth();
 
   const [loading, setLoading] = useState<null | "google" | "apple">(null);
   const lineColor = variant === "purple" ? "#E9E2F0" : THEME.line;
@@ -40,7 +41,7 @@ const OAuth = ({
     if (loading) return;
     setLoading("google");
     try {
-      const result = await googleOAuth(startGoogle);
+      const result = await googleOAuth(startGoogle, getToken);
 
       if (result.success) {
         router.replace("/(root)/(tabs)/home");

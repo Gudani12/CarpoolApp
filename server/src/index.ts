@@ -16,6 +16,7 @@ import ratingsRouter from "./routes/ratings";
 import ridesRouter from "./routes/rides";
 import sosRouter from "./routes/sos";
 import supportRouter from "./routes/support";
+import userRouter from "./routes/user";
 import { getSupabaseServerClient } from "./services/supabase";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env"), quiet: true });
@@ -277,6 +278,7 @@ app.use("/api/ratings", requireAuth, ratingsRouter);
 app.use("/api/rides", requireAuth, ridesRouter);
 app.use("/api/sos", requireAuth, sosRouter);
 app.use("/api/support", requireAuth, supportRouter);
+app.use("/api/user", requireAuth, userRouter);
 app.use("/api/payments", requireAuth, paymentsRouter);
 
 app.use(notFoundHandler);

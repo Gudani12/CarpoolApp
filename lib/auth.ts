@@ -28,7 +28,10 @@ export const tokenCache = {
   },
 };
 
-export const googleOAuth = async (startOAuthFlow: any) => {
+export const googleOAuth = async (
+  startOAuthFlow: any,
+  getToken: () => Promise<string | null>,
+) => {
   if (!startOAuthFlow || typeof startOAuthFlow !== "function") {
     return {
       success: false,
@@ -64,17 +67,30 @@ export const googleOAuth = async (startOAuthFlow: any) => {
       };
     }
 
-    if (setActive) {
-      await setActive({ session: createdSessionId });
+    if (!setActive) {
+      return {
+        success: false,
+        code: "missing_set_active",
+        message: "Google sign-in could not activate your session.",
+      };
     }
+    await setActive({ session: createdSessionId });
 
     if (signUp?.createdUserId) {
-      await fetchAPI("/(api)/user", {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Unable to establish a session for account setup.");
+      }
+
+      await fetchAPI("/api/user", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           name: `${signUp.firstName ?? ""} ${signUp.lastName ?? ""}`.trim(),
           email: signUp.emailAddress ?? "",
-          clerkId: signUp.createdUserId,
         }),
       });
     }
