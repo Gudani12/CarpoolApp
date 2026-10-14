@@ -99,57 +99,40 @@ router.post("/:rideId", async (request, response) => {
     throw new HttpError(400, "Only completed trips can be rated");
   }
 
-  const { data: driver, error: driverError } = await getSupabaseServerClient()
-    .from("drivers")
-    .select("id")
-    .eq("id", ride.driver_id)
-    .maybeSingle();
-  if (driverError) throw driverError;
-  if (!driver) throw new HttpError(404, "Driver not found");
-
   const supabase = getSupabaseServerClient();
-  const { error: insertError } = await supabase.from("driver_ratings").insert({
-    ride_id: String(ride.ride_id),
-    passenger_clerk_id: passengerId,
-    driver_id: ride.driver_id,
-    rating,
-    comment: feedback.trim() || null,
-  });
+  const { data, error: insertError } = await supabase.rpc(
+    "record_driver_rating",
+    {
+      p_ride_id: String(ride.ride_id),
+      p_passenger_clerk_id: passengerId,
+      p_driver_id: ride.driver_id,
+      p_rating: rating,
+      p_comment: feedback.trim() || null,
+    },
+  );
 
   if (insertError?.code === "23505") {
     throw new HttpError(409, "You have already rated this trip");
   }
   if (insertError) throw insertError;
 
-  const { data: ratings, error: ratingsError } = await supabase
-    .from("driver_ratings")
-    .select("rating")
-    .eq("driver_id", ride.driver_id);
-  if (ratingsError) throw ratingsError;
-
-  const driverRatingRows = ratings ?? [];
-  const averageRating =
-    Math.round(
-      (driverRatingRows.reduce(
-        (total, entry) => total + Number(entry.rating),
-        0,
-      ) /
-        driverRatingRows.length) *
-        10,
-    ) / 10;
-
-  const { error: updateError } = await supabase
-    .from("drivers")
-    .update({ rating: averageRating })
-    .eq("id", ride.driver_id);
-  if (updateError) throw updateError;
+  const savedRating = Array.isArray(data) ? data[0] : data;
+  const averageRating = Number(savedRating?.average_rating);
+  const ratingCount = Number(savedRating?.rating_count);
+  if (
+    !savedRating ||
+    !Number.isFinite(averageRating) ||
+    !Number.isSafeInteger(ratingCount)
+  ) {
+    throw new HttpError(500, "The rating could not be confirmed");
+  }
 
   response.status(201).json({
     data: {
       success: true,
       rating,
       average_rating: averageRating,
-      rating_count: driverRatingRows.length,
+      rating_count: ratingCount,
     },
   });
 });
