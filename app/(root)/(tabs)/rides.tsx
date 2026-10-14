@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
@@ -18,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/Cards";
 import RideCard from "@/components/RideCard";
-import { useApiFetch } from "@/lib/api";
+import { apiRequest, useApiFetch } from "@/lib/api";
 import { useLocationStore } from "@/store";
 import { Ride } from "@/types/type";
 
@@ -28,6 +28,7 @@ type Tab = "upcoming" | "history";
 
 const Rides = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const { setUserLocation, setDestinationLocation } = useLocationStore();
 
   const [tab, setTab] = useState<Tab>("upcoming");
@@ -172,33 +173,29 @@ const Rides = () => {
           text: "Cancel trip",
           style: "destructive",
           onPress: async () => {
+            if (!ride.ride_id) {
+              Alert.alert("Cancel failed", "This trip has no valid ride ID.");
+              return;
+            }
+
             try {
-              const res = await fetch("/(api)/ride/cancel", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  ride_id: (ride as any).ride_id,
-                  user_id: user?.id,
-                }),
-              });
-
-              const json = await res.json();
-
-              if (!res.ok) {
-                console.error("Cancel failed:", json);
-                Alert.alert(
-                  "Cancel failed",
-                  json?.error || "Unable to cancel trip",
-                );
-                return;
-              }
+              const token = await getToken();
+              await apiRequest(
+                `/api/rides/${ride.ride_id}/cancel`,
+                { method: "POST" },
+                token,
+              );
 
               Alert.alert("Cancelled", "Your trip has been cancelled.");
-              // Refresh list
               await refetch();
-            } catch (e) {
-              console.error("Error calling cancel endpoint:", e);
-              Alert.alert("Cancel failed", "Unable to cancel trip");
+            } catch (error) {
+              console.error("Error calling cancel endpoint:", error);
+              Alert.alert(
+                "Cancel failed",
+                error instanceof Error
+                  ? error.message
+                  : "Unable to cancel trip",
+              );
             }
           },
         },

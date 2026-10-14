@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import CustomButton from "@/components/CustomButton";
-import { fetchAPI } from "@/lib/fetch";
+import { apiRequest } from "@/lib/api";
 
 // ─── Per-field behaviour ─────────────────────────────────────────────────────
 // Keyboard, validation and help text depend on what's being edited, so they
@@ -34,6 +34,11 @@ type FieldConfig = {
   /** Where the value lives: a top-level column, or inside profile_data. */
   nested?: boolean;
   validate?: (value: string) => string | null;
+};
+
+type ProfileRecord = {
+  profile_data?: Record<string, unknown>;
+  [key: string]: unknown;
 };
 
 const CONFIG: Record<string, FieldConfig> = {
@@ -127,6 +132,7 @@ const EditProfile = () => {
     label?: string;
   }>();
   const { user } = useUser();
+  const { getToken } = useAuth();
 
   const config: FieldConfig = (field && CONFIG[field]) || {
     placeholder: "Enter a value",
@@ -147,8 +153,11 @@ const EditProfile = () => {
       }
 
       try {
-        const result = await fetchAPI(
-          `/(api)/profile?clerkId=${encodeURIComponent(user.id)}`,
+        const token = await getToken();
+        const result = await apiRequest<{ data?: ProfileRecord | null }>(
+          "/api/profile",
+          {},
+          token,
         );
         const record = result?.data ?? {};
         const existing = config.nested
@@ -162,7 +171,7 @@ const EditProfile = () => {
         setLoading(false);
       }
     })();
-  }, [user?.id, field]);
+  }, [config.nested, getToken, user?.id, field]);
 
   const handleSave = async () => {
     if (!field || !user?.id) return;
@@ -181,8 +190,11 @@ const EditProfile = () => {
       let payload: Record<string, unknown>;
 
       if (config.nested) {
-        const current = await fetchAPI(
-          `/(api)/profile?clerkId=${encodeURIComponent(user.id)}`,
+        const token = await getToken();
+        const current = await apiRequest<{ data?: ProfileRecord | null }>(
+          "/api/profile",
+          {},
+          token,
         );
         const existingData = current?.data?.profile_data ?? {};
         payload = { profile_data: { ...existingData, [field]: value.trim() } };
@@ -190,17 +202,23 @@ const EditProfile = () => {
         payload = { [field]: value.trim() };
       }
 
-      await fetchAPI("/(api)/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clerkId: user.id, ...payload }),
-      });
+      const token = await getToken();
+      await apiRequest(
+        "/api/profile",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+        token,
+      );
 
       router.back();
     } catch (err) {
       Alert.alert(
         "Update failed",
-        "We couldn't save that change. Please try again.",
+        err instanceof Error
+          ? err.message
+          : "We couldn't save that change. Please try again.",
       );
     } finally {
       setSaving(false);
