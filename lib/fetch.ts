@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { API_ORIGIN } from "@/constants/api";
 
-// Module-level token provider — set this once in your root layout so every
-// fetchAPI call automatically gets the Clerk JWT attached when present.
+// ─────────────────────────────────────────────────────────────────────────────
+// Module-level Clerk token provider. The root layout wires this up so every
+// fetchAPI call automatically includes the Clerk JWT as a Bearer token.
+// ─────────────────────────────────────────────────────────────────────────────
 let _tokenProvider: (() => Promise<string | null>) | null = null;
 
 export function setFetchTokenProvider(

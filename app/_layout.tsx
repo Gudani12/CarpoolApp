@@ -1,24 +1,52 @@
-import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
+import { ClerkLoaded, ClerkProvider, useAuth } from "@clerk/expo";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, LogBox, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  LogBox,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import "react-native-reanimated";
 import "../global.css";
 
 import AnimatedSplash from "@/components/AnimatedSplash";
 import { API_ORIGIN } from "@/constants/api";
 import { tokenCache } from "@/lib/auth";
+import { setFetchTokenProvider } from "@/lib/fetch";
 import { setRuntimeAppConfig } from "@/lib/runtimeConfig";
 import { configureSupabaseClient } from "@/lib/supabase";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 // The catch matters: in Expo Go and after a Fast Refresh there may be no native
 // splash registered, and the rejected promise surfaces as a red-box error.
-SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.preventAutoHideAsync().catch(() => { });
 
 LogBox.ignoreLogs(["Clerk:"]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TokenBridge wires the Clerk token into fetchAPI so every backend request
+// automatically includes the Authorization: Bearer header.
+// ─────────────────────────────────────────────────────────────────────────────
+function TokenBridge() {
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    setFetchTokenProvider(async () => {
+      try {
+        return (await getToken()) ?? null;
+      } catch {
+        return null;
+      }
+    });
+    return () => setFetchTokenProvider(null);
+  }, [getToken]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
@@ -34,7 +62,6 @@ export default function RootLayout() {
     "Jakarta-SemiBold": require("../assets/fonts/PlusJakartaSans-SemiBold.ttf"),
   });
 
-  // Tracks whether the animated splash has played out and faded away
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
@@ -99,9 +126,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      // Hand off from the native splash to ours. Both use the same green
-      // background, so there's no visible seam.
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().catch(() => { });
     }
   }, [loaded]);
 
@@ -112,6 +137,7 @@ export default function RootLayout() {
   const content = publishableKey ? (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
+        <TokenBridge />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
@@ -141,8 +167,6 @@ export default function RootLayout() {
   return (
     <View style={{ flex: 1 }}>
       {content}
-
-      {/* Sits above everything, including Clerk's own loading gap, then lifts */}
       {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
     </View>
   );
