@@ -1,7 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
+import { useEffect, useState } from "react";
 
 import { brand, ui } from "@/constants/theme";
+import { fetchRouteDurationSeconds } from "@/lib/map";
+import { getRuntimeAppConfig } from "@/lib/runtimeConfig";
+import { estimateArrivalTime } from "@/lib/ride-time";
 import { OfferTrip } from "@/types/type";
 
 const THEME = {
@@ -38,6 +42,12 @@ const formatDuration = (start: string, end?: string | null) => {
   return `${hours > 0 ? `${hours}h ` : ""}${minutes}m`.trim();
 };
 
+const formatDurationMinutes = (durationMinutes: number) => {
+  const hours = Math.floor(durationMinutes / 60);
+  const minutes = durationMinutes % 60;
+  return `${hours > 0 ? `${hours}h ` : ""}${minutes}m`.trim();
+};
+
 const formatTripDate = (date: string) => {
   const parsed = new Date(`${date}T12:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
@@ -60,6 +70,63 @@ const OfferTripCard = ({
   isCheapest?: boolean;
 }) => {
   const trip = rawTrip as TripExtras;
+  const [routeDuration, setRouteDuration] = useState<{
+    routeKey: string;
+    seconds: number;
+  } | null>(null);
+  const geoapifyApiKey = getRuntimeAppConfig()?.geoapifyApiKey;
+  const originLatitude = trip.leaving_from_lat;
+  const originLongitude = trip.leaving_from_lng;
+  const destinationLatitude = trip.going_to_lat;
+  const destinationLongitude = trip.going_to_lng;
+  const routeKey = [
+    originLatitude,
+    originLongitude,
+    destinationLatitude,
+    destinationLongitude,
+  ].join(",");
+
+  useEffect(() => {
+    let active = true;
+
+    if (
+      !geoapifyApiKey ||
+      originLatitude == null ||
+      originLongitude == null ||
+      destinationLatitude == null ||
+      destinationLongitude == null ||
+      ![originLatitude, originLongitude, destinationLatitude, destinationLongitude]
+        .every(Number.isFinite)
+    ) {
+      return () => {
+        active = false;
+      };
+    }
+
+    void fetchRouteDurationSeconds({
+      originLatitude,
+      originLongitude,
+      destinationLatitude,
+      destinationLongitude,
+      apiKey: geoapifyApiKey,
+    }).then((durationSeconds) => {
+      if (active && durationSeconds != null) {
+        setRouteDuration({ routeKey, seconds: durationSeconds });
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    geoapifyApiKey,
+    originLatitude,
+    originLongitude,
+    destinationLatitude,
+    destinationLongitude,
+    routeKey,
+  ]);
+
   const firstName = trip.drivers?.first_name ?? "";
   const lastInitial = trip.drivers?.last_name?.[0]
     ? ` ${trip.drivers.last_name[0]}.`
@@ -69,8 +136,17 @@ const OfferTripCard = ({
   const rating = trip.drivers?.rating;
   const seatsLeft = Math.max(0, trip.seats_available - trip.seats_booked);
   const departTime = trip.departure_time.slice(0, 5);
-  const arriveTime = trip.arrival_time?.slice(0, 5) ?? null;
-  const duration = formatDuration(departTime, arriveTime);
+  const routeDurationSeconds =
+    routeDuration?.routeKey === routeKey ? routeDuration.seconds : null;
+  const estimatedArrivalTime =
+    routeDurationSeconds == null
+      ? null
+      : estimateArrivalTime(departTime, routeDurationSeconds);
+  const arriveTime = trip.arrival_time?.slice(0, 5) ?? estimatedArrivalTime;
+  const duration =
+    routeDurationSeconds != null
+      ? formatDurationMinutes(Math.round(routeDurationSeconds / 60))
+      : formatDuration(departTime, trip.arrival_time);
 
   return (
     <View
@@ -225,7 +301,7 @@ const OfferTripCard = ({
                 color: THEME.ink,
               }}
             >
-              {arriveTime ?? "--:--"}
+              {arriveTime ?? "—"}
             </Text>
             <Text
               style={{
