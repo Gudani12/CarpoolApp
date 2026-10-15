@@ -74,7 +74,7 @@ export async function pickFromLibrary(): Promise<PickedImage | null> {
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images"], // MediaTypeOptions is deprecated in SDK 52+
+    mediaTypes: ["images"],
     allowsEditing: true,
     quality: 0.7,
     base64: true,
@@ -129,7 +129,9 @@ export async function uploadDocument(
 
   if (error) {
     console.error("Document upload failed:", error);
-    throw new Error("We couldn't upload that image. Check your connection and try again.");
+    throw new Error(
+      "We couldn't upload that image. Check your connection and try again.",
+    );
   }
 
   return path;
@@ -163,19 +165,15 @@ export type VerificationPayload = {
   government_id_url?: string;
   government_id_back_url?: string;
   selfie_image_url?: string;
-  /** Derived from the ID number itself, so it can't disagree with the document. */
   id_number?: string;
   id_verified?: boolean;
   date_of_birth?: string;
   id_citizenship?: string;
-  /** Anything the automatic checks flagged, for the reviewer to look at. */
   verification_warnings?: string[];
 };
 
 /**
  * Save the uploaded paths and move the account into review.
- * Uses the existing /(api)/profile endpoint — no new backend needed beyond
- * accepting these columns.
  */
 export async function submitForReview(
   clerkId: string,
@@ -233,4 +231,40 @@ export function verificationProgress(flags: {
 }) {
   const done = Object.values(flags).filter(Boolean).length;
   return Math.round((done / 4) * 100);
+}
+
+// ─── Didit: Identity verification (passengers) ───────────────────────────────
+
+export type DiditStartResult = {
+  session_id: string;
+  session_token: string;
+  url: string;
+};
+
+/**
+ * Start a Didit identity verification session for a passenger.
+ * The driver app has its own version with more options — passengers only need
+ * the basic KYC flow (ID + liveness + face match + AML).
+ */
+export async function startDiditVerification(
+  clerkId: string,
+  callbackUrl?: string,
+): Promise<DiditStartResult> {
+  console.log(`DIDIT: creating session for ${clerkId}`);
+
+  const res = await fetchAPI("/(api)/didit-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clerkId, callbackUrl }),
+  });
+
+  const session: DiditStartResult | undefined = res?.data ?? res;
+
+  if (!session?.url) {
+    throw new Error(
+      "We couldn't start the identity check. Please check your connection and try again.",
+    );
+  }
+
+  return session;
 }

@@ -44,6 +44,14 @@ const SELECT_COLUMNS = `
   id_verified,
   id_citizenship,
   date_of_birth,
+  first_name,
+  last_name,
+  passport_number,
+  passport_verified,
+  rejection_reason,
+  didit_session_id,
+  didit_decision,
+  didit_verified_at,
   profile_data
 `;
 
@@ -68,9 +76,9 @@ export async function GET(request: Request) {
     return Response.json({
       data: profile
         ? {
-            ...profile,
-            profile_data: profile.profile_data ?? {},
-          }
+          ...profile,
+          profile_data: profile.profile_data ?? {},
+        }
         : null,
     });
   } catch (error) {

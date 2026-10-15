@@ -20,10 +20,6 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/hopon.logo.png"
-    },
     "plugins": [
       "expo-router",
       "expo-image",

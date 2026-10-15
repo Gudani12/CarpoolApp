@@ -2,30 +2,57 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { API_ORIGIN } from "@/constants/api";
 
-export const fetchAPI = async (url: string, options?: RequestInit) => {
+// Module-level token provider — set this once in your root layout so every
+// fetchAPI call automatically gets the Clerk JWT attached when present.
+let _tokenProvider: (() => Promise<string | null>) | null = null;
+
+export function setFetchTokenProvider(
+  provider: (() => Promise<string | null>) | null,
+) {
+  _tokenProvider = provider;
+}
+
+async function getAuthHeader(): Promise<Record<string, string>> {
+  if (!_tokenProvider) return {};
   try {
-    const apiBaseUrl = API_ORIGIN;
-    const requestUrl = /^https?:\/\//i.test(url)
-      ? url
-      : `${apiBaseUrl}/${url
-          .replace(/^\/\(api\)(?=\/|$)/, "/api")
-          .replace(/^\/+/, "")}`;
-
-    if (/^http:/i.test(requestUrl)) {
-      throw new Error("Insecure HTTP requests are not allowed");
-    }
-
-    const response = await fetch(requestUrl, options);
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`HTTP error! status: ${response.status} ${body}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw error;
+    const token = await _tokenProvider();
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
   }
+}
+
+export const fetchAPI = async (url: string, options?: RequestInit) => {
+  const apiBaseUrl = API_ORIGIN;
+  const requestUrl = /^https?:\/\//i.test(url)
+    ? url
+    : `${apiBaseUrl}/${url
+      .replace(/^\/\(api\)(?=\/|$)/, "/api")
+      .replace(/^\/+/, "")}`;
+
+  if (/^http:/i.test(requestUrl) && !requestUrl.includes("localhost")) {
+    throw new Error("Insecure HTTP requests are not allowed");
+  }
+
+  const authHeader = await getAuthHeader();
+
+  const mergedHeaders: Record<string, string> = {
+    ...(options?.headers as Record<string, string> | undefined),
+    ...authHeader,
+  };
+
+  const response = await fetch(requestUrl, {
+    ...options,
+    headers: mergedHeaders,
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`HTTP error! status: ${response.status} ${body}`);
+  }
+
+  return await response.json();
 };
 
 export const useFetch = <T>(url: string, options?: RequestInit) => {
@@ -33,17 +60,11 @@ export const useFetch = <T>(url: string, options?: RequestInit) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // `options` was in the dependency array as a raw object. Callers pass inline
-  // objects, which are a new reference on every render, so fetchData changed
-  // every render and the effect re-fired forever. Comparing the serialised
-  // form instead keeps it stable.
   const optionsKey = useMemo(
     () => (options ? JSON.stringify(options) : ""),
     [options],
   );
 
-  // Guards against a slow early response overwriting a later one, and against
-  // setting state after the screen has unmounted.
   const requestId = useRef(0);
   const mounted = useRef(true);
 

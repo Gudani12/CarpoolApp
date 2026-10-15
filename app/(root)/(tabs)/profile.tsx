@@ -3,34 +3,34 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ImageSourcePropType,
-    Linking,
-    Pressable,
-    ScrollView,
-    Switch,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ImageSourcePropType,
+  Linking,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SectionCard, StatCard } from "@/components/Cards";
-import { icons } from "@/constants";
 import OptionSheet, {
-    GENDER_OPTIONS,
-    SA_LANGUAGES,
-    VEHICLE_OPTIONS,
+  GENDER_OPTIONS,
+  SA_LANGUAGES,
+  VEHICLE_OPTIONS,
 } from "@/components/OptionSheet";
+import { icons } from "@/constants";
 import { brand, ui } from "@/constants/theme";
 import { apiRequest } from "@/lib/api";
 import {
-    PickedImage,
-    captureImage,
-    pickFromLibrary,
-    uploadAvatar,
+  PickedImage,
+  captureImage,
+  pickFromLibrary,
+  uploadAvatar,
 } from "@/lib/verification";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
@@ -79,6 +79,19 @@ type ProfileRecord = {
   verification_status?: string;
   phone_number?: string;
   profile_data?: Record<string, any>;
+
+  // Didit passenger fields
+  id_verified?: boolean | null;
+  passport_verified?: boolean | null;
+  id_number?: string | null;
+  passport_number?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  date_of_birth?: string | null;
+  id_citizenship?: string | null;
+  rejection_reason?: string | null;
+  didit_session_id?: string | null;
+  didit_verified_at?: string | null;
 };
 
 type RideSummary = {
@@ -303,9 +316,23 @@ const Profile = () => {
     typeof profile?.verification_percentage === "number"
       ? profile.verification_percentage
       : 0;
-  const verificationStatus = (profile?.verification_status ?? "Not submitted")
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  // Passenger verification status — driven by the Didit flags
+  const isIdVerified = profile?.id_verified === true;
+  const isPending = !isIdVerified && Boolean(profile?.didit_session_id);
+  const isRejected = !isIdVerified && !isPending && Boolean(profile?.rejection_reason);
+
+  const verificationStatusLabel = isIdVerified
+    ? "Verified"
+    : isRejected
+      ? "Rejected"
+      : isPending
+        ? "In progress"
+        : "Not submitted";
+
+  const maskedId = profile?.id_number
+    ? `•••• ${profile.id_number.slice(-4)}`
+    : null;
 
   const hasPhoto = Boolean(
     profile?.profile_image_url ||
@@ -313,21 +340,12 @@ const Profile = () => {
     user?.imageUrl,
   );
   const hasPhone = Boolean(phoneNumber && phoneNumber !== "Add a phone number");
-  const hasId = Boolean(
-    profile?.government_id_url || profileData.government_id_url,
-  );
-  const hasIdBack = Boolean(
-    profile?.government_id_back_url || profileData.government_id_back_url,
-  );
-  const hasSelfie = Boolean(
-    profile?.selfie_image_url || profileData.selfie_image_url,
-  );
+  const hasId = isIdVerified;
 
   const steps = [
     { label: "Profile photo", done: hasPhoto },
     { label: "Phone number", done: hasPhone },
-    { label: "Government ID", done: hasId },
-    { label: "Selfie verification", done: hasSelfie },
+    { label: "Identity verification", done: hasId },
   ];
   const completedSteps = steps.filter((s) => s.done).length;
   const progressValue = Math.round((completedSteps / steps.length) * 100);
@@ -579,7 +597,7 @@ const Profile = () => {
                 icon="shield-checkmark"
                 iconSource={icons.verify}
                 label="Verified"
-                value={`${verification}%`}
+                value={isIdVerified ? "Yes" : "No"}
               />
             </View>
 
@@ -745,50 +763,62 @@ const Profile = () => {
             {expandedSections.identitySecurity && (
               <View style={{ marginBottom: 20 }}>
                 <SectionCard
-                  title="Verification status"
-                  value={`${verificationStatus} · ${verification}% complete`}
-                  iconSource={icons.verified}
-                  status={hasId && hasSelfie ? "verified" : "required"}
-                  onPress={() => router.push("/(root)/verification")}
-                />
-                <SectionCard
-                  title="Verify identity"
-                  value="Submit your documents for review"
+                  title="Identity verification"
+                  value={
+                    isIdVerified
+                      ? `Verified${maskedId ? ` · ${maskedId}` : ""}`
+                      : isRejected
+                        ? "Rejected — tap to retry"
+                        : isPending
+                          ? "In progress"
+                          : "Verify your ID to start booking rides"
+                  }
                   iconSource={icons.verifyIdentity}
+                  status={isIdVerified ? "verified" : "required"}
                   onPress={() => router.push("/(root)/verification")}
                 />
+
+                {isIdVerified && profile?.first_name && profile?.last_name && (
+                  <SectionCard
+                    title="Verified name"
+                    value={`${profile.first_name} ${profile.last_name}`}
+                    icon="person-outline"
+                    onPress={() =>
+                      Alert.alert(
+                        "Verified name",
+                        "Your verified name is set by the identity check and cannot be changed here.",
+                      )
+                    }
+                  />
+                )}
+
+                {isIdVerified && profile?.date_of_birth && (
+                  <SectionCard
+                    title="Date of birth"
+                    value={profile.date_of_birth.slice(0, 10)}
+                    icon="calendar-outline"
+                    onPress={() =>
+                      Alert.alert(
+                        "Date of birth",
+                        "Your date of birth is set by the identity check and cannot be changed here.",
+                      )
+                    }
+                  />
+                )}
+
                 <SectionCard
-                  title="ID document"
-                  value={hasId ? "Document uploaded" : "Add the front of your ID"}
-                  iconSource={icons.idDocument}
-                  status={hasId ? "verified" : "required"}
-                  onPress={() => router.push("/(root)/verification")}
-                />
-                <SectionCard
-                  title="ID back (document back)"
-                  value={hasIdBack ? "Document uploaded" : "Add the back of your ID"}
-                  iconSource={icons.idBack}
-                  status={hasIdBack ? "verified" : "required"}
-                  onPress={() => router.push("/(root)/verification")}
-                />
-                <SectionCard
-                  title="Selfie verification"
-                  value={hasSelfie ? "Selfie uploaded" : "Add a verification selfie"}
-                  iconSource={icons.selfie}
-                  status={hasSelfie ? "verified" : "required"}
-                  onPress={() => router.push("/(root)/verification")}
-                />
-                <SectionCard
-                  title="Phone verification"
-                  icon="call-outline"
+                  title="Phone number"
+                  value={phoneNumber}
+                  iconSource={icons.phone}
                   status={hasPhone ? "verified" : "required"}
                   onPress={() =>
-                    Alert.alert(
-                      "Phone verification",
-                      "Use Clerk phone verification when it is enabled for your account.",
-                    )
+                    router.push({
+                      pathname: "/(root)/edit-profile",
+                      params: { field: "phone_number", label: "Phone number" },
+                    })
                   }
                 />
+
                 <SectionCard
                   title="Change password"
                   value="Update it here in the app"
@@ -1230,11 +1260,10 @@ const Profile = () => {
                   title="Trip history"
                   value={
                     rideSummary.completed_trips > 0
-                      ? `${rideSummary.completed_trips} completed · R${
-                          typeof rideSummary.money_spent === "number"
-                            ? rideSummary.money_spent.toFixed(2)
-                            : "0.00"
-                        } spent`
+                      ? `${rideSummary.completed_trips} completed · R${typeof rideSummary.money_spent === "number"
+                        ? rideSummary.money_spent.toFixed(2)
+                        : "0.00"
+                      } spent`
                       : "No trips yet"
                   }
                   iconSource={icons.tripHistory}

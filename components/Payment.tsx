@@ -1,9 +1,8 @@
 import { useAuth } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
-import { LinkDisplay, useStripe } from "@stripe/stripe-react-native";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, Text, View } from "react-native";
+import { Alert, Image, Platform, Text, View } from "react-native";
 import { ReactNativeModal } from "react-native-modal";
 
 import CustomButton from "@/components/CustomButton";
@@ -12,6 +11,39 @@ import { apiRequest } from "@/lib/api";
 import { getHubPromotionalFare } from "@/lib/promotions";
 import { useLocationStore } from "@/store";
 import { PaymentProps } from "@/types/type";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stripe is a native-only module. Requiring it at the top of the file breaks
+// the web bundle. Load it lazily and only on iOS/Android; on web, provide a
+// stub so nothing crashes and the payment screen still renders.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type PaymentSheetResult = { error?: { code?: string; message: string } };
+
+type StripeHooks = {
+  initPaymentSheet: (opts: any) => Promise<PaymentSheetResult>;
+  presentPaymentSheet: () => Promise<PaymentSheetResult>;
+};
+
+let useStripe: () => StripeHooks = () => ({
+  initPaymentSheet: async () => ({
+    error: { message: "Stripe is not available on web." },
+  }),
+  presentPaymentSheet: async () => ({
+    error: { message: "Stripe is not available on web." },
+  }),
+});
+
+// `LinkDisplay` is also exported by the native module. On web we don't need it
+// — the stub never reads it — so a plain object stands in.
+let LinkDisplay: { NEVER: string } = { NEVER: "NEVER" };
+
+if (Platform.OS !== "web") {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Stripe = require("@stripe/stripe-react-native");
+  useStripe = Stripe.useStripe;
+  LinkDisplay = Stripe.LinkDisplay;
+}
 
 const Payment = ({
   fullName,
@@ -337,7 +369,6 @@ const Payment = ({
             Google Pay in the secure LYFT payment sheet.
           </Text>
         </View>
-
       </View>
 
       <CustomButton
