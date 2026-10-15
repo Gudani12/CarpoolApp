@@ -1,3 +1,8 @@
+import {
+  fetchRouteDurationSeconds,
+  fetchRoutePolyline,
+} from "../../lib/map";
+
 describe('fetchRoutePolyline', () => {
   const originalFetch = globalThis.fetch;
   const originalWarn = console.warn;
@@ -14,7 +19,6 @@ describe('fetchRoutePolyline', () => {
       json: () => Promise.resolve({ features: [] }),
     }) as any;
 
-    const { fetchRoutePolyline } = require('../../lib/map');
     const result = await fetchRoutePolyline({
       originLatitude: -26.2,
       originLongitude: 28.0,
@@ -41,7 +45,6 @@ describe('fetchRoutePolyline', () => {
         }),
     }) as any;
 
-    const { fetchRoutePolyline } = require('../../lib/map');
     const result = await fetchRoutePolyline({
       originLatitude: -26.2,
       originLongitude: 28.0,
@@ -74,7 +77,6 @@ describe('fetchRoutePolyline', () => {
         }),
     }) as any;
 
-    const { fetchRoutePolyline } = require('../../lib/map');
     const result = await fetchRoutePolyline({
       originLatitude: -26.2,
       originLongitude: 28.0,
@@ -91,7 +93,6 @@ describe('fetchRoutePolyline', () => {
     console.error = jest.fn();
     globalThis.fetch = jest.fn().mockRejectedValue(new Error('network down')) as any;
 
-    const { fetchRoutePolyline } = require('../../lib/map');
     const result = await fetchRoutePolyline({
       originLatitude: -26.2,
       originLongitude: 28.0,
@@ -112,7 +113,6 @@ describe('fetchRoutePolyline', () => {
         }),
     }) as any;
 
-    const { fetchRoutePolyline } = require('../../lib/map');
     const result = await fetchRoutePolyline({
       originLatitude: -26.2,
       originLongitude: 28.0,
@@ -122,5 +122,53 @@ describe('fetchRoutePolyline', () => {
     });
 
     expect(result).toBeNull();
+  });
+});
+
+describe('fetchRouteDurationSeconds', () => {
+  const originalFetch = globalThis.fetch;
+  const originalWarn = console.warn;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    console.warn = originalWarn;
+    jest.resetModules();
+  });
+
+  it('returns the actual route duration in seconds', async () => {
+    console.warn = jest.fn();
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({ features: [{ properties: { time: 2700 } }] }),
+    }) as any;
+
+    const duration = await fetchRouteDurationSeconds({
+      originLatitude: -26.2,
+      originLongitude: 28,
+      destinationLatitude: -26.1,
+      destinationLongitude: 28.1,
+      apiKey: 'test',
+    });
+
+    expect(duration).toBe(2700);
+  });
+
+  it('returns null when the route duration is unavailable', async () => {
+    console.warn = jest.fn();
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ features: [{ properties: {} }] }),
+    }) as any;
+
+    const duration = await fetchRouteDurationSeconds({
+      originLatitude: -26.2,
+      originLongitude: 28,
+      destinationLatitude: -26.1,
+      destinationLongitude: 28.1,
+      apiKey: 'test',
+    });
+
+    expect(duration).toBeNull();
   });
 });

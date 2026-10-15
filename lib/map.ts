@@ -233,6 +233,7 @@ export async function fetchRoutePolyline({
           });
         }
       }
+
     }
 
     if (coords.length === 0) {
@@ -243,6 +244,50 @@ export async function fetchRoutePolyline({
     return coords;
   } catch (error) {
     console.error("Geoapify routing fetch failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetch the driving duration for a route from the Geoapify Routing API.
+ * Returns seconds, or null when a usable route duration is unavailable.
+ */
+export async function fetchRouteDurationSeconds({
+  originLatitude,
+  originLongitude,
+  destinationLatitude,
+  destinationLongitude,
+  apiKey,
+}: {
+  originLatitude: number;
+  originLongitude: number;
+  destinationLatitude: number;
+  destinationLongitude: number;
+  apiKey: string;
+}): Promise<number | null> {
+  const url = `https://api.geoapify.com/v1/routing?waypoints=${originLatitude},${originLongitude}|${destinationLatitude},${destinationLongitude}&mode=drive&apiKey=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn("Geoapify routing duration request failed", response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const duration = data?.features?.[0]?.properties?.time;
+    if (
+      typeof duration !== "number" ||
+      !Number.isFinite(duration) ||
+      duration <= 0
+    ) {
+      console.warn("Geoapify routing: no valid duration in response");
+      return null;
+    }
+
+    return duration;
+  } catch (error) {
+    console.error("Geoapify routing duration fetch failed:", error);
     return null;
   }
 }
