@@ -112,12 +112,14 @@ router.post("/", async (request, response) => {
     switch (status) {
         case "Approved": {
             if (idApproved) update.id_verified = true;
+
             const firstId = idVerifications[0];
             if (firstId) {
-                if (firstId.document_number) update.id_number = firstId.document_number;
+                if (firstId.document_number)
+                    update.id_number = firstId.document_number;
                 if (firstId.date_of_birth)
                     update.date_of_birth = firstId.date_of_birth;
-                // The users table has `name`, not first_name/last_name.
+
                 const fullName = [firstId.first_name, firstId.last_name]
                     .filter(Boolean)
                     .join(" ")
@@ -126,6 +128,7 @@ router.post("/", async (request, response) => {
             }
             break;
         }
+
         case "Declined": {
             update.id_verified = false;
             update.rejection_reason =
@@ -133,38 +136,57 @@ router.post("/", async (request, response) => {
                 "Identity verification was declined.";
             break;
         }
+
         case "Kyc Expired": {
             update.id_verified = false;
             break;
         }
+
         default:
             break;
     }
 
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
         .from("users")
         .select("id")
         .eq("clerk_id", clerkId)
         .maybeSingle();
+
+    if (lookupError) {
+        console.error("didit-webhook: DB lookup failed", lookupError);
+        response.status(500).send("db lookup failed");
+        return;
+    }
 
     if (existing) {
         const { error } = await supabase
             .from("users")
             .update(update)
             .eq("clerk_id", clerkId);
+
         if (error) {
             console.error("didit-webhook: DB update failed", error);
             response.status(500).send("db update failed");
             return;
         }
     } else {
+        const firstId = idVerifications[0];
+        const fallbackName =
+            [firstId?.first_name, firstId?.last_name]
+                .filter(Boolean)
+                .join(" ")
+                .trim() || `Rider ${clerkId.slice(-6)}`;
+
         const { error } = await supabase.from("users").insert({
             clerk_id: clerkId,
+            name: fallbackName,
+            email: `${clerkId}@placeholder.local`,
             id_verified: false,
             passport_verified: false,
             profile_data: {},
             ...update,
         });
+
         if (error) {
             console.error("didit-webhook: DB insert failed", error);
             response.status(500).send("db insert failed");
