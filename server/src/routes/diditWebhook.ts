@@ -36,7 +36,9 @@ function sortKeys(v: unknown): unknown {
 
 router.post("/", async (request, response) => {
     const rawBody =
-        typeof request.body === "string" ? request.body : JSON.stringify(request.body);
+        typeof request.body === "string"
+            ? request.body
+            : JSON.stringify(request.body);
 
     const secret = process.env.DIDIT_WEBHOOK_SECRET;
     if (!secret) {
@@ -113,9 +115,14 @@ router.post("/", async (request, response) => {
             const firstId = idVerifications[0];
             if (firstId) {
                 if (firstId.document_number) update.id_number = firstId.document_number;
-                if (firstId.first_name) update.first_name = firstId.first_name;
-                if (firstId.last_name) update.last_name = firstId.last_name;
-                if (firstId.date_of_birth) update.date_of_birth = firstId.date_of_birth;
+                if (firstId.date_of_birth)
+                    update.date_of_birth = firstId.date_of_birth;
+                // The users table has `name`, not first_name/last_name.
+                const fullName = [firstId.first_name, firstId.last_name]
+                    .filter(Boolean)
+                    .join(" ")
+                    .trim();
+                if (fullName) update.name = fullName;
             }
             break;
         }
@@ -145,7 +152,11 @@ router.post("/", async (request, response) => {
             .from("users")
             .update(update)
             .eq("clerk_id", clerkId);
-        if (error) console.error("didit-webhook: DB update failed", error);
+        if (error) {
+            console.error("didit-webhook: DB update failed", error);
+            response.status(500).send("db update failed");
+            return;
+        }
     } else {
         const { error } = await supabase.from("users").insert({
             clerk_id: clerkId,
@@ -154,7 +165,11 @@ router.post("/", async (request, response) => {
             profile_data: {},
             ...update,
         });
-        if (error) console.error("didit-webhook: DB insert failed", error);
+        if (error) {
+            console.error("didit-webhook: DB insert failed", error);
+            response.status(500).send("db insert failed");
+            return;
+        }
     }
 
     response.status(200).send("ok");
