@@ -7,6 +7,8 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/requireAuth";
 import appConfigRouter from "./routes/appConfig";
 import checkIdRouter from "./routes/checkId";
+import diditSessionRouter from "./routes/diditSession";
+import diditWebhookRouter from "./routes/diditWebhook";
 import driverVehicleRouter from "./routes/driverVehicle";
 import healthRouter from "./routes/health";
 import messagesRouter from "./routes/messages";
@@ -64,7 +66,7 @@ async function loadPassengerRating(clerkId: string) {
     rating:
       ratings.length > 0
         ? ratings.reduce((sum, entry) => sum + Number(entry.rating), 0) /
-          ratings.length
+        ratings.length
         : null,
     rating_count: ratings.length,
   };
@@ -127,7 +129,8 @@ profileRouter.get("/summary", async (_request, response) => {
           ride.status !== "cancelled" && ride.payment_status !== "cancelled",
       ).length,
       completed_trips: rides.filter(
-        (ride) => ride.status === "completed" || ride.payment_status === "paid",
+        (ride) =>
+          ride.status === "completed" || ride.payment_status === "paid",
       ).length,
       cancelled_trips: rides.filter(
         (ride) => ride.payment_status === "cancelled",
@@ -280,6 +283,8 @@ app.use("/api/sos", requireAuth, sosRouter);
 app.use("/api/support", requireAuth, supportRouter);
 app.use("/api/user", requireAuth, userRouter);
 app.use("/api/payments", requireAuth, paymentsRouter);
+app.use("/api/didit-session", requireAuth, diditSessionRouter);
+app.use("/api/didit-webhook", diditWebhookRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
